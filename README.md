@@ -1,1 +1,1 @@
-*t.me/Erat_bot
+* t.me/Erat_bot
