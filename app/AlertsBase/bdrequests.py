@@ -21,16 +21,24 @@ async def get_alerts(tg_id) :
         alerts = await session.scalars(select(Alert).where(Alert.user_id == tg_id))
 
         for alert in alerts:
-            await bot.send_message(chat_id=tg_id, text=f"{alert.val1} c разницей {alert.procent} {alert.val2}")
+            await bot.send_message(chat_id=tg_id, text=f"{alert.val1} с направлением {alert.direction} - и разницей {alert.procent} {alert.val2}")
             fl = 0
         if fl == 1:
             await bot.send_message(chat_id=tg_id, text="У вас нет Alerts")
 
 
-async def setAlert(user_id,cost,procent,val1,val2):
+async def setAlert(user_id,cost,procent,val1,val2,direction):
     async with async_session() as session:
-        session.add(Alert(user_id = user_id,cost = cost, procent = procent,val1 = val1, val2 = val2))
+        session.add(Alert(user_id = user_id,cost = cost, procent = procent,val1 = val1, val2 = val2,direction = direction))
         await session.commit()
+
+async def delete_my_alerts(user_id):
+    async with async_session() as session:
+        await session.scalars(select(Alert))
+        async with async_session() as session:
+            await session.execute(delete(Alert).where(Alert.user_id == user_id))
+            await session.commit()
+
 
 async def messageAlerts():
     async with async_session() as session:
@@ -41,13 +49,16 @@ async def messageAlerts():
                 New_rq = requests.get(
                     f"https://min-api.cryptocompare.com/data/pricemulti?fsyms={AlertObject.val1}&tsyms={AlertObject.val2}&api_key={API_TOKEN}")
                 cost = float(New_rq.json()[AlertObject.val1][AlertObject.val2])
-                #rasnitsa = abs(float(AlertObject.cost) - cost)
-                if 99999 > float(AlertObject.procent): #rasnitsa
+                if AlertObject.direction == "Вверх":
+                    rasnitsa = ( cost - float(AlertObject.cost))
+                elif AlertObject.direction == "Вниз":
+                    rasnitsa = (float(AlertObject.cost) - cost)
+                if rasnitsa > float(AlertObject.procent): #rasnitsa
                     await  session.execute(delete(Alert).where(Alert.id == AlertObject.id))
-                    if float(AlertObject.cost) > cost:
-                        await bot.send_message(chat_id=AlertObject.user_id,text=f"ALERT! Цена {AlertObject.val1}  упала на  {AlertObject.procent} {AlertObject.val2} ")
-                    else:
-                        await bot.send_message(chat_id=AlertObject.user_id,text=f"ALERT! Цена {AlertObject.val1}  возросла на {AlertObject.procent} {AlertObject.val2}")
+                    if AlertObject.direction == "Вверх":
+                        await bot.send_message(chat_id=AlertObject.user_id,text=f"ALERT! Цена {AlertObject.val1}  возросла на  {AlertObject.procent} {AlertObject.val2} ")
+                    elif AlertObject.direction == "Вниз":
+                        await bot.send_message(chat_id=AlertObject.user_id,text=f"ALERT! Цена {AlertObject.val1}  упала на {AlertObject.procent} {AlertObject.val2}")
             await session.commit()
 
 

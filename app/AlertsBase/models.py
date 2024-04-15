@@ -26,6 +26,7 @@ class Alert(Base):
     procent: Mapped[str] = mapped_column(String(25))
     val1: Mapped[str] = mapped_column(String(25))
     val2: Mapped[str] = mapped_column(String(25))
+    direction: Mapped[str] = mapped_column(String(25))
 
 
 async def async_main():
