@@ -7,13 +7,18 @@ import app.keyboards as kb
 from aiogram.fsm.context import FSMContext
 from BotConfig import API_TOKEN
 import app.AlertsBase.bdrequests as rq
-from app.AlertsBase.bdrequests import messageAlerts, get_alerts
+from app.AlertsBase.bdrequests import messageAlerts, get_alerts, delete_my_alerts
 async def rasilka():
     while 1:
         await messageAlerts()
 
 router = Router()
 
+def is_float(string):
+  try:
+    return float(string) and '.' in string  # True if string is a number contains a dot
+  except ValueError:  # String is not a number
+    return False
 
 
 class Crypto(StatesGroup):
@@ -23,6 +28,7 @@ class Alert(StatesGroup):
     val1 = State()
     val2 = State()
     costProcent = State()
+    direction = State()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -32,18 +38,20 @@ async def cmd_start(message: Message):
 async def get_help(message: Message):
     await message.answer('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
-@router.message(F.text == "Крипта")
+@router.message(F.text == "Начать отслеживание")
 async def how_are_you(message: Message):
     await  rasilka()
-
+@router.message(F.text == 'Чистка')
+async def reg_one(message: Message):
+    await delete_my_alerts(message.from_user.id)
+    await message.answer('Alerts удалены ')
+@router.message(F.text == 'Узнать свои Alerts')
+async def reg_one(message: Message):
+    await get_alerts(message.from_user.id)
 @router.message(F.text == 'Узнать курс валюты')
 async def reg_one(message: Message,state: FSMContext):
     await state.set_state(Crypto.val1)
     await message.answer('Введите название валюты')
-
-@router.message(F.text == 'Узнать свои Alerts')
-async def reg_one(message: Message):
-    await get_alerts(message.from_user.id)
 
 @router.message(Crypto.val1)
 async def reg_two(message: Message, state: FSMContext):
@@ -82,15 +90,21 @@ async def alert_three(message: Message, state: FSMContext):
 @router.message(Alert.costProcent)
 async def alert_four(message: Message, state: FSMContext):
     await state.update_data(costProcent=message.text)
+    await state.set_state(Alert.direction)
+    await message.answer('Выберите направление курса')##,reply_markup=kb.directi)
+@router.message(Alert.direction)
+async def alert_five(message: Message, state: FSMContext):
+    await state.update_data(direction=message.text)
     data = await state.get_data()
     CRresponse = requests.get(
     f"https://min-api.cryptocompare.com/data/pricemulti?fsyms={data["val1"]}&tsyms={data["val2"]}&api_key={API_TOKEN}")
-    if "Response" in CRresponse.json():
+    if ("Response" in CRresponse.json() or (not(data["costProcent"].isdigit()) and not(is_float(data["costProcent"]))) or (data['direction']
+            != 'Вверх' and data['direction'] != 'Вниз')):
         await message.answer("Что-то пошло не так, введите заново")
     else:
         cost = str(CRresponse.json()[data["val1"]][data["val2"]])
         data["costProcent"] = str(float(cost) * (float(data["costProcent"]) / 100))
-        await rq.setAlert(message.from_user.id,cost,data["costProcent"],data["val1"],data["val2"])
+        await rq.setAlert(message.from_user.id,cost,data["costProcent"],data["val1"],data["val2"],data["direction"])
         await message.answer("Alert успешно установлен!")
         await state.clear()
 
