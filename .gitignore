@@ -1,3 +1,4 @@
 # created by virtualenv automatically
 BotConfig.py
 .env
+db.sqlite3
