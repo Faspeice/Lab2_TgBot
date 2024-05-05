@@ -12,10 +12,8 @@ import app.AlertsBase.bdrequests as rq
 from app.AlertsBase.bdrequests import messageAlerts, get_alerts, delete_my_alerts
 from dotenv import load_dotenv
 load_dotenv()
-def rasilka():
-    while 1:
-        asyncio.run(messageAlerts())
-threading.Thread(target=rasilka).start()
+
+
 router = Router()
 def is_float(string):
   try:
